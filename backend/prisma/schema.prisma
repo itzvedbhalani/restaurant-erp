@@ -1,0 +1,362 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Role {
+  id          String       @id @default(uuid())
+  name        String       @unique
+  description String?
+  permissions Permission[] @relation("RolePermissions")
+  users       User[]
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  roles       Role[]   @relation("RolePermissions")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("permissions")
+}
+
+model User {
+  id                String             @id @default(uuid())
+  email             String             @unique
+  loginId           String?            @unique @map("login_id")
+  password          String
+  name              String
+  roleId            String             @map("role_id")
+  role              Role               @relation(fields: [roleId], references: [id])
+  staff             Staff?
+  notifications     Notification[]
+  sentComplaints    Complaint[]        @relation("ComplaintReporter")
+  resolvedComplaints Complaint[]       @relation("ComplaintResolver")
+  complaintComments ComplaintComment[]
+  auditLogs         AuditLog[]
+  resetToken        String?            @map("reset_token")
+  resetTokenExpiry  DateTime?          @map("reset_token_expiry")
+  isVerified        Boolean            @default(false) @map("is_verified")
+  otpCode           String?            @map("otp_code")
+  otpExpiry         DateTime?          @map("otp_expiry")
+  otpAttempts       Int                @default(0) @map("otp_attempts")
+  createdAt         DateTime           @default(now()) @map("created_at")
+  updatedAt         DateTime           @updatedAt @map("updated_at")
+
+  @@map("users")
+}
+
+model Restaurant {
+  id             String          @id @default(uuid())
+  name           String
+  address        String
+  phone          String
+  gstNumber      String?         @map("gst_number")
+  status         String          @default("ACTIVE") @map("status") // ACTIVE, SUSPENDED
+  isDemo         Boolean         @default(false) @map("is_demo")
+  staff          Staff[]
+  tables         Table[]
+  menuCategories MenuCategory[]
+  inventoryItems InventoryItem[]
+  suppliers      Supplier[]
+  orders         Order[]
+  settings       Setting[]
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+
+  @@map("restaurants")
+}
+
+/// Tracks one "Quick Login" demo grant per (device, role). Each demo session
+/// gets its own private, isolated Restaurant so concurrent visitors never
+/// see or affect each other's changes. A device may only be issued a fresh
+/// demo restaurant once every COOLDOWN_DAYS (enforced in DemoService); until
+/// then, revisiting the same device+role logs back into the same demo
+/// restaurant if it hasn't expired yet.
+model DemoSession {
+  id           String   @id @default(uuid())
+  deviceId     String   @map("device_id")
+  roleName     String   @map("role_name")
+  restaurantId String   @map("restaurant_id")
+  userId       String   @map("user_id")
+  issuedAt     DateTime @default(now()) @map("issued_at")
+  expiresAt    DateTime @map("expires_at")
+
+  @@unique([deviceId, roleName])
+  @@map("demo_sessions")
+}
+
+model Staff {
+  id           String       @id @default(uuid())
+  userId       String       @unique @map("user_id")
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  restaurantId String       @map("restaurant_id")
+  restaurant   Restaurant   @relation(fields: [restaurantId], references: [id])
+  phone        String
+  salary       Float
+  status       String       @default("ACTIVE") // ACTIVE, INACTIVE, LEAVE
+  attendance   Attendance[]
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+
+  @@map("staff")
+}
+
+model Attendance {
+  id        String    @id @default(uuid())
+  staffId   String    @map("staff_id")
+  staff     Staff     @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  date      DateTime  @db.Date
+  clockIn   DateTime  @map("clock_in")
+  clockOut  DateTime? @map("clock_out")
+  status    String    @default("PRESENT") // PRESENT, ABSENT, LATE, HALF_DAY
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  @@map("attendance")
+}
+
+model Table {
+  id           String     @id @default(uuid())
+  number       String
+  capacity     Int
+  status       String     @default("AVAILABLE") // AVAILABLE, OCCUPIED, RESERVED, CLEANING
+  restaurantId String     @map("restaurant_id")
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  qrCode       String?    @map("qr_code")
+  orders       Order[]
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  @@map("tables")
+}
+
+model MenuCategory {
+  id           String     @id @default(uuid())
+  name         String
+  description  String?
+  restaurantId String     @map("restaurant_id")
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  menuItems    MenuItem[]
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  @@map("menu_categories")
+}
+
+model MenuItem {
+  id          String        @id @default(uuid())
+  name        String
+  description String?
+  price       Float
+  imageUrl    String?       @map("image_url")
+  isAvailable Boolean       @default(true) @map("is_available")
+  taxRate     Float         @default(5.0) @map("tax_rate") // Percentage
+  categoryId  String        @map("category_id")
+  category    MenuCategory  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  recipe      Recipe?
+  orderItems  OrderItem[]
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  @@map("menu_items")
+}
+
+model Recipe {
+  id                String             @id @default(uuid())
+  menuItemId        String             @unique @map("menu_item_id")
+  menuItem          MenuItem           @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  description       String?
+  recipeIngredients RecipeIngredient[]
+  createdAt         DateTime           @default(now()) @map("created_at")
+  updatedAt         DateTime           @updatedAt @map("updated_at")
+
+  @@map("recipes")
+}
+
+model RecipeIngredient {
+  id              String        @id @default(uuid())
+  recipeId        String        @map("recipe_id")
+  recipe          Recipe        @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  inventoryItemId String        @map("inventory_item_id")
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  quantityNeeded  Float         @map("quantity_needed") // Quantity of raw material used
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  @@map("recipe_ingredients")
+}
+
+model InventoryItem {
+  id                String                 @id @default(uuid())
+  name              String
+  quantity          Float                  @default(0.0)
+  unit              String // kg, liters, pcs, pack etc
+  threshold         Float                  @default(5.0) // Low stock threshold alert limit
+  restaurantId      String                 @map("restaurant_id")
+  restaurant        Restaurant             @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  recipeIngredients RecipeIngredient[]
+  transactions      InventoryTransaction[]
+  createdAt         DateTime               @default(now()) @map("created_at")
+  updatedAt         DateTime               @updatedAt @map("updated_at")
+
+  @@map("inventory_items")
+}
+
+model InventoryTransaction {
+  id              String        @id @default(uuid())
+  inventoryItemId String        @map("inventory_item_id")
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  type            String        @map("transaction_type") // STOCK_IN, STOCK_OUT, CONSUMED, WAStAGE
+  quantity        Float
+  notes           String?
+  createdAt       DateTime      @default(now()) @map("created_at")
+
+  @@map("inventory_transactions")
+}
+
+model Supplier {
+  id            String     @id @default(uuid())
+  name          String
+  contactPerson String?    @map("contact_person")
+  phone         String?
+  email         String?
+  address       String?
+  restaurantId  String     @map("restaurant_id")
+  restaurant    Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  createdAt     DateTime   @default(now()) @map("created_at")
+  updatedAt     DateTime   @updatedAt @map("updated_at")
+
+  @@map("suppliers")
+}
+
+model Order {
+  id             String      @id @default(uuid())
+  tableId        String?     @map("table_id")
+  table          Table?      @relation(fields: [tableId], references: [id])
+  waiterId       String?     @map("waiter_id")
+  restaurantId   String      @map("restaurant_id")
+  restaurant     Restaurant  @relation(fields: [restaurantId], references: [id])
+  status         String      @default("NEW") // NEW, PREPARING, READY, SERVED, COMPLETED, CANCELLED
+  totalPrice     Float       @map("total_price")
+  subtotal       Float
+  taxAmount      Float       @map("tax_amount")
+  discountAmount Float       @default(0.0) @map("discount_amount")
+  notes          String?
+  orderItems     OrderItem[]
+  payments       Payment[]
+  createdAt      DateTime    @default(now()) @map("created_at")
+  updatedAt      DateTime    @updatedAt @map("updated_at")
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id         String   @id @default(uuid())
+  orderId    String   @map("order_id")
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menuItemId String   @map("menu_item_id")
+  menuItem   MenuItem @relation(fields: [menuItemId], references: [id])
+  quantity   Int
+  price      Float // Sold price
+  notes      String?
+  status     String   @default("PENDING") // PENDING, COOKING, READY, SERVED
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@map("order_items")
+}
+
+model Payment {
+  id            String   @id @default(uuid())
+  orderId       String   @map("order_id")
+  order         Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  amount        Float
+  status        String   @default("PENDING") // PENDING, COMPLETED, FAILED
+  method        String // CASH, UPI, CARD
+  transactionId String?  @map("transaction_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@map("payments")
+}
+
+model Complaint {
+  id              String             @id @default(uuid())
+  reporterId      String             @map("reporter_id")
+  reporter        User               @relation("ComplaintReporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  category        String // Food Quality, Service, Hygiene, Staff, Infrastructure
+  title           String
+  description     String
+  priority        String             @default("MEDIUM") // LOW, MEDIUM, HIGH, CRITICAL
+  status          String             @default("OPEN") // OPEN, IN_PROGRESS, RESOLVED
+  resolvedById    String?            @map("resolved_by_id")
+  resolvedBy      User?              @relation("ComplaintResolver", fields: [resolvedById], references: [id])
+  resolutionNotes String?            @map("resolution_notes")
+  comments        ComplaintComment[]
+  createdAt       DateTime           @default(now()) @map("created_at")
+  updatedAt       DateTime           @updatedAt @map("updated_at")
+
+  @@map("complaints")
+}
+
+model ComplaintComment {
+  id          String    @id @default(uuid())
+  complaintId String    @map("complaint_id")
+  complaint   Complaint @relation(fields: [complaintId], references: [id], onDelete: Cascade)
+  userId      String    @map("user_id")
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  comment     String
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  @@map("complaint_comments")
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String
+  isRead    Boolean  @default(false) @map("is_read")
+  type      String   @default("INFO") // INFO, ORDER_READY, ORDER_NEW, LOW_STOCK, COMPLAINT
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("notifications")
+}
+
+model Setting {
+  id           String     @id @default(uuid())
+  restaurantId String     @map("restaurant_id")
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  key          String
+  value        String
+  type         String     @default("STRING") // STRING, BOOLEAN, NUMBER, JSON
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  @@unique([restaurantId, key])
+  @@map("settings")
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?  @map("user_id")
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String
+  details   String?
+  ipAddress String?  @map("ip_address")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("audit_logs")
+}

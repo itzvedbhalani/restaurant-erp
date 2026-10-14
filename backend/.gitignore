@@ -1,0 +1,15 @@
+# Compiled output
+dist/
+node_modules/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+
+# Prisma generated files (if applicable)
+# .prisma

@@ -1,0 +1,24 @@
+services:
+  # Restaurant ERP Backend Service (NestJS + Socket.IO + Prisma)
+  - type: web
+    name: restaurant-erp-backend
+    env: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm install && npm run prisma:generate && npm run build
+    startCommand: npx prisma db push && npm run seed:site-owner && npm run start:prod
+    envVars:
+      - key: DATABASE_URL
+        sync: false # Set this in Render dashboard or link to Neon/Supabase PostgreSQL
+      - key: JWT_SECRET
+        generateValue: true
+      - key: PORT
+        value: 10000
+      - key: NODE_ENV
+        value: production
+      - key: SITE_OWNER_LOGIN_ID
+        value: tomsiteowner
+      - key: SITE_OWNER_PASSWORD
+        generateValue: true
+      - key: SITE_OWNER_NAME
+        value: Site Owner

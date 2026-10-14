@@ -1,0 +1,215 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --border: #e2e8f0;
+  --card: #ffffff;
+  --primary: #6366f1;
+  --primary-hover: #4f46e5;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --muted: #64748b;
+}
+
+.dark {
+  --background: #090d16;
+  --foreground: #f1f5f9;
+  --border: #1e293b;
+  --card: #111827;
+  --primary: #818cf8;
+  --primary-hover: #6366f1;
+  --success: #34d399;
+  --warning: #fbbf24;
+  --danger: #f87171;
+  --muted: #94a3b8;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: 'Outfit', sans-serif;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Glassmorphism utility */
+.glass {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Premium Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
+}
+
+/* ------------------------------------------------------------------ */
+/* Printable receipt                                                  */
+/* ------------------------------------------------------------------ */
+/* When printing (Cashier's "Print" button on the receipt modal), hide
+   everything on the page except the receipt itself — otherwise the
+   sidebar, header, and rest of the dashboard would print too. */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #printable-receipt,
+  #printable-receipt * {
+    visibility: visible;
+  }
+  #printable-receipt {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    color: #000 !important;
+    background: #fff !important;
+  }
+}
+/* ------------------------------------------------------------------ */
+/* Light-mode overrides                                               */
+/* ------------------------------------------------------------------ */
+/* Most of the app's pages were built with hardcoded dark-palette
+   Tailwind classes (bg-slate-950, text-white, border-slate-800, etc.)
+   instead of the theme-aware `background`/`foreground` tokens above.
+   That means toggling the `dark` class alone did nothing visually on
+   those pages. Rather than rewriting every page's markup, this block
+   flips the actual dark-slate colors to light equivalents whenever the
+   `dark` class is NOT present on <html>, so the existing theme toggle
+   now genuinely re-colors the whole app. */
+
+/* Panel / surface backgrounds -> white or near-white surfaces */
+html:not(.dark) .bg-slate-950,
+html:not(.dark) .bg-slate-900,
+html:not(.dark) .bg-slate-850,
+html:not(.dark) .bg-slate-855,
+html:not(.dark) .bg-slate-800 {
+  background-color: #ffffff !important;
+}
+html:not(.dark) .bg-slate-950\/40,
+html:not(.dark) .bg-slate-950\/60,
+html:not(.dark) .bg-slate-900\/20,
+html:not(.dark) .bg-slate-900\/30,
+html:not(.dark) .bg-slate-900\/40,
+html:not(.dark) .bg-slate-900\/60 {
+  background-color: rgba(255, 255, 255, 0.85) !important;
+}
+html:not(.dark) .bg-slate-800\/20,
+html:not(.dark) .bg-slate-800\/40,
+html:not(.dark) .bg-slate-800\/50 {
+  background-color: rgba(226, 232, 240, 0.6) !important;
+}
+html:not(.dark) .bg-slate-700,
+html:not(.dark) .bg-slate-700\/60 {
+  background-color: #e2e8f0 !important;
+}
+
+/* Borders -> soft light borders */
+html:not(.dark) .border-slate-600,
+html:not(.dark) .border-slate-700,
+html:not(.dark) .border-slate-750,
+html:not(.dark) .border-slate-800,
+html:not(.dark) .border-slate-850,
+html:not(.dark) .border-slate-855,
+html:not(.dark) .border-slate-900 {
+  border-color: #e2e8f0 !important;
+}
+html:not(.dark) .border-slate-800\/60,
+html:not(.dark) .border-slate-800\/80 {
+  border-color: rgba(226, 232, 240, 0.8) !important;
+}
+
+/* Table row dividers (Tailwind's `divide-*` applies border-color to the
+   child combinator, so the override selector has to match that shape). */
+html:not(.dark) .divide-slate-800\/60 > :not([hidden]) ~ :not([hidden]) {
+  border-color: rgba(226, 232, 240, 0.8) !important;
+}
+
+/* Text -> dark ink on light background */
+html:not(.dark) .text-white,
+html:not(.dark) .text-slate-100,
+html:not(.dark) .text-slate-200 {
+  color: #0f172a !important;
+}
+html:not(.dark) .text-slate-300,
+html:not(.dark) .text-slate-350,
+html:not(.dark) .text-slate-355,
+html:not(.dark) .text-slate-400,
+html:not(.dark) .text-slate-450 {
+  color: #475569 !important;
+}
+html:not(.dark) .text-slate-500,
+html:not(.dark) .text-slate-550,
+html:not(.dark) .text-slate-600 {
+  color: #64748b !important;
+}
+
+/* Hover states that assume a dark background (`hover:text-white` reads
+   fine on slate-900 but is invisible on white) */
+html:not(.dark) .hover\:text-white:hover,
+html:not(.dark) .group:hover .group-hover\:text-white {
+  color: #0f172a !important;
+}
+
+/* Input placeholders */
+html:not(.dark) .placeholder-slate-500::placeholder,
+html:not(.dark) .placeholder-slate-600::placeholder,
+html:not(.dark) .placeholder-slate-650::placeholder {
+  color: #94a3b8 !important;
+}
+
+/* The "PETPOOJA PRO" logo (and similar headings) use a white-to-slate
+   gradient clipped to the text itself — invisible on a light background.
+   Swap it to a dark ink gradient that still reads as a subtle gradient,
+   just legible on white instead of only on black. */
+html:not(.dark) .from-white.via-slate-200.to-slate-400.bg-clip-text {
+  background-image: linear-gradient(to right, #0f172a, #334155, #475569) !important;
+}
+
+/* Backdrop blur panels read oddly on white; keep blur but drop the
+   tinted dark background it usually paired with (handled above). */
+html:not(.dark) .backdrop-blur,
+html:not(.dark) .backdrop-blur-xl,
+html:not(.dark) .backdrop-blur-md {
+  background-color: rgba(255, 255, 255, 0.9);
+}
+
+/* ------------------------------------------------------------------ */
+/* Exception: the login page's left branding panel is a permanently
+   dark decorative hero (navy/violet gradient) by design — it isn't
+   meant to flip to a light surface. The blanket rules above (correctly)
+   turn text-white/text-slate-300/etc dark everywhere else, but that
+   made this panel's text nearly unreadable against its own dark
+   background. Restore light-on-dark colors specifically inside it,
+   regardless of site theme. */
+html:not(.dark) .login-hero-panel,
+html:not(.dark) .login-hero-panel h1 {
+  color: #f1f5f9 !important;
+}
+html:not(.dark) .login-hero-panel .text-slate-300 {
+  color: #cbd5e1 !important;
+}
+html:not(.dark) .login-hero-panel .text-slate-400 {
+  color: #94a3b8 !important;
+}
+html:not(.dark) .login-hero-panel .border-slate-800\/60 {
+  border-color: rgba(148, 163, 184, 0.25) !important;
+}
+html:not(.dark) .login-hero-panel .from-white.via-slate-200.to-slate-400.bg-clip-text {
+  background-image: linear-gradient(to right, #ffffff, #e2e8f0, #cbd5e1) !important;
+}

@@ -66,7 +66,7 @@ Render પર WebSockets (Socket.IO) અને Background tasks ખૂબ સા
    - **Runtime**: `Node`
    - **Build Command**:
      ```bash
-     npm install && npm run prisma:generate && npm run build
+     npm install --include=dev && npm run prisma:generate && npm run build
      ```
    - **Start Command**:
      ```bash
